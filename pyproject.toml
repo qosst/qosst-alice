@@ -35,13 +35,22 @@ qosst-alice = "qosst_alice.alice:main"
 qosst-alice-tools = "qosst_alice.tools.commands:main"
 
 [tool.poetry.group.dev.dependencies]
-sphinx-rtd-theme = "^1.0.0"
-Sphinx = "^5.3.0"
+sphinx-rtd-theme = [
+    { version = "^1.0.0", python = ">=3.9, <3.10" },
+    { version = "^3.0.0", python = ">=3.10, <3.14" },
+]
+Sphinx = [
+    { version = "^5.0.0", python = ">=3.9, <3.10" },
+    { version = "^8.1.0", python = ">=3.10, <3.14" },
+]
 docstr-coverage = "^2.2.0"
 setuptools = "^67.6.1"
 sphinx-argparse-cli = "^1.11.0"
 sphinx-prompt = "^1.5.0"
-myst-parser = "^1.0.0"
+myst-parser = [
+    { version = "^1.0.0", python = ">=3.9, <3.10" },
+    { version = "^4.0.0", python = ">=3.10, <3.14" },
+]
 sphinxcontrib-programoutput = "^0.17"
 matplotlib = "^3.5.1"
 scipy = [
