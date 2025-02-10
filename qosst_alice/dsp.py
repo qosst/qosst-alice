@@ -98,7 +98,6 @@ def dsp_alice_params(
     zc_length: int,
     zc_root: int,
     zc_rate: float,
-    zc_amplitude: float,
     num_zeros_start: int,
     num_zeros_end: int,
     dac_rate: float,
@@ -111,6 +110,7 @@ def dsp_alice_params(
     load_symbols: bool = False,
     save_symbols: bool = False,
     symbols_path: QOSSTPath = "",
+    zc_amplitude: float = 1,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Use the DSP of Alice to generate the sequence to the DAC using parameters.
 
@@ -127,7 +127,6 @@ def dsp_alice_params(
         zc_length (int): length of the Zadoff-Chu sequence. Must be coprime with the root.
         zc_root (int): root of the Zadoff-Chu sequence. Must be coprime with the length.
         zc_rate (float): rate of the Zadoff-Chu sequence. Must be less than the DAC rate. If 0 is given, the DAC rate is used.
-        zc_amplitude (float, optional): amplitude of the Zadoff-Chu sequence. Must be between 0 and 1.
         num_zeros_start (int): number of zeros to pad before the Zadoff-Chu sequence.
         num_zeros_end (int): number of zeros to pad after the end of the quantum sequence.
         dac_rate (float): dac rate.
@@ -140,6 +139,7 @@ def dsp_alice_params(
         load_symbols (bool, optional): load the symbols instead of generating them if True. Defaults to False.
         save_symbols (bool, optional): save the symbols if True. Defaults to False.
         symbols_path (QOSSTPath, optional): path to load or save the quantum symbols. Defaults to "".
+        zc_amplitude (float, optional): amplitude of the Zadoff-Chu sequence. Must be between 0 and 1. Defaults ti 1,
 
     Returns:
         Tuple[np.ndarray, np.ndarray, np.ndarray]: sequence to send, quantum sequence (without pilots, Zadoff-Chu and padded zeros), symbols.
@@ -446,11 +446,8 @@ def add_zc(sequence: np.ndarray, root: int, length: int, repeat: int = 1, amplit
     Returns:
         np.ndarray: sequence with the Zadoff-Chu sequence added.
     """
-    logger.info("Adding Zadoff-Chu with length %i and root %i", length, root)
-    zadoff_chu = zcsequence(root, length)
-    if amplitude < 1:
-        logger.info("Rescale Zadoff-Chu with amplitude=%f", amplitude)
-        zadoff_chu *= amplitude
+    logger.info("Adding Zadoff-Chu with length %i, root %i and amplitude %f", length, root, amplitude)
+    zadoff_chu = amplitude * zcsequence(root, length)
     if repeat > 1:
         logger.info("Repeating Zadoff-Chu with repeat=%i", repeat)
         zadoff_chu = np.repeat(zadoff_chu, repeat)
