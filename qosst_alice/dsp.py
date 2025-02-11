@@ -68,6 +68,7 @@ def dsp_alice(config: Configuration) -> Tuple[np.ndarray, np.ndarray, np.ndarray
         zc_length=config.frame.zadoff_chu.length,
         zc_root=config.frame.zadoff_chu.root,
         zc_rate=config.frame.zadoff_chu.rate,
+        zc_amplitude=config.frame.zadoff_chu.amplitude,
         num_zeros_start=config.frame.num_zeros_start,
         num_zeros_end=config.frame.num_zeros_end,
         dac_rate=config.alice.dac.rate,
@@ -109,6 +110,7 @@ def dsp_alice_params(
     load_symbols: bool = False,
     save_symbols: bool = False,
     symbols_path: QOSSTPath = "",
+    zc_amplitude: float = 1,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Use the DSP of Alice to generate the sequence to the DAC using parameters.
 
@@ -137,6 +139,7 @@ def dsp_alice_params(
         load_symbols (bool, optional): load the symbols instead of generating them if True. Defaults to False.
         save_symbols (bool, optional): save the symbols if True. Defaults to False.
         symbols_path (QOSSTPath, optional): path to load or save the quantum symbols. Defaults to "".
+        zc_amplitude (float, optional): amplitude of the Zadoff-Chu sequence. Must be between 0 and 1. Defaults to 1,
 
     Returns:
         Tuple[np.ndarray, np.ndarray, np.ndarray]: sequence to send, quantum sequence (without pilots, Zadoff-Chu and padded zeros), symbols.
@@ -230,6 +233,7 @@ def dsp_alice_params(
         zc_root,
         zc_length,
         repeat=repeat,
+        amplitude=zc_amplitude,
     )
 
     # Pad zeros
@@ -428,7 +432,7 @@ def add_frequency_multiplexed_pilots(
     return sequence + pilot_sequence
 
 
-def add_zc(sequence: np.ndarray, root: int, length: int, repeat: int = 1) -> np.ndarray:
+def add_zc(sequence: np.ndarray, root: int, length: int, repeat: int = 1, amplitude: float = 1) -> np.ndarray:
     """
     Add Zadoff-Chu sequence at the beginning of the sequence.
 
@@ -436,13 +440,14 @@ def add_zc(sequence: np.ndarray, root: int, length: int, repeat: int = 1) -> np.
         sequence (np.ndarray): sequence to which add the Zadoff-Chu sequence to.
         root (int): root of the Zadoff-Chu sequence.
         length (int): length of the Zadoff-Chu sequence.
-        repeat (int, optional): repeat each element by this amount, useful to change the rate. Default to 1.
+        repeat (int, optional): repeat each element by this amount, useful to change the rate. Defaults to 1.
+        amplitude (float, optional): amplitude of the Zadoff-Chu sequence. Defaults to 1.
 
     Returns:
         np.ndarray: sequence with the Zadoff-Chu sequence added.
     """
-    logger.info("Adding Zadoff-Chu with length %i and root %i", length, root)
-    zadoff_chu = zcsequence(root, length)
+    logger.info("Adding Zadoff-Chu with length %i, root %i and amplitude %f", length, root, amplitude)
+    zadoff_chu = amplitude * zcsequence(root, length)
     if repeat > 1:
         logger.info("Repeating Zadoff-Chu with repeat=%i", repeat)
         zadoff_chu = np.repeat(zadoff_chu, repeat)
