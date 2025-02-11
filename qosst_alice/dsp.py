@@ -139,7 +139,7 @@ def dsp_alice_params(
         load_symbols (bool, optional): load the symbols instead of generating them if True. Defaults to False.
         save_symbols (bool, optional): save the symbols if True. Defaults to False.
         symbols_path (QOSSTPath, optional): path to load or save the quantum symbols. Defaults to "".
-        zc_amplitude (float, optional): amplitude of the Zadoff-Chu sequence. Must be between 0 and 1. Defaults ti 1,
+        zc_amplitude (float, optional): amplitude of the Zadoff-Chu sequence. Must be between 0 and 1. Defaults to 1,
 
     Returns:
         Tuple[np.ndarray, np.ndarray, np.ndarray]: sequence to send, quantum sequence (without pilots, Zadoff-Chu and padded zeros), symbols.
@@ -440,8 +440,8 @@ def add_zc(sequence: np.ndarray, root: int, length: int, repeat: int = 1, amplit
         sequence (np.ndarray): sequence to which add the Zadoff-Chu sequence to.
         root (int): root of the Zadoff-Chu sequence.
         length (int): length of the Zadoff-Chu sequence.
-        repeat (int, optional): repeat each element by this amount, useful to change the rate. Default to 1.
-        amplitude (float, optional): amplitude of the Zadoff-Chu sequence. Default to 1.
+        repeat (int, optional): repeat each element by this amount, useful to change the rate. Defaults to 1.
+        amplitude (float, optional): amplitude of the Zadoff-Chu sequence. Defaults to 1.
 
     Returns:
         np.ndarray: sequence with the Zadoff-Chu sequence added.
