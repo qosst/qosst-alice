@@ -1,5 +1,5 @@
 # qosst-alice - Alice module of the Quantum Open Software for Secure Transmissions.
-# Copyright (C) 2021-2024 Yoann Piétri
+# Copyright (C) 2021-2025 Yoann Piétri
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@ import uuid
 import time
 import traceback
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 import numpy as np
 
@@ -40,7 +40,7 @@ from qosst_hal.laser import GenericLaser
 from qosst_hal.voa import GenericVOA
 from qosst_hal.modulator_bias_control import GenericModulatorBiasController
 
-from qosst_core.utils import eph
+from qosst_core.utils import eph, complex_to_real
 from qosst_core.logging import create_loggers
 from qosst_core.configuration import Configuration
 from qosst_core.configuration.exceptions import InvalidConfiguration
@@ -48,6 +48,9 @@ from qosst_core.control_protocol import QOSST_VERSION
 from qosst_core.control_protocol.sockets import QOSSTServer
 from qosst_core.control_protocol.codes import QOSSTCodes, QOSSTErrorCodes
 from qosst_core.infos import get_script_infos
+
+from qosst_pp.reconciliation import reconcile_alice
+from qosst_pp.privacy_amplification import privacy_amplification_alice
 
 from qosst_alice import __version__
 from qosst_alice.dsp import dsp_alice
@@ -81,6 +84,16 @@ class QOSSTAlice:
     ]  #: An array with the quantum sequence, of the current frame.
     symbols: Optional[np.ndarray]  #: An array with the symbols, of the current frame.
     photon_number: float  #: The mean photon number of the current frame.
+    indices: List[int]  #: Array of indices requested by Bob for PE.
+    raw_key_material: (
+        np.ndarray
+    )  #: Raw key material before reconcilation, after parameter estimation.
+    reconciled_key: Optional[
+        List[int]
+    ]  #: Variable to store key after error correction.
+    final_key: Optional[
+        List[int]
+    ]  #: Variable to store key after privacy amplification.
 
     # Hardware
     dac: GenericDAC  #: The DAC of Alice.
@@ -106,23 +119,12 @@ class QOSSTAlice:
         # State initialization
         self.client_connected = False
         self.client_initialized = False
-        self.frame_uuid = None
-        self.frame_prepared = False
-        self.frame_sent = False
-        self.frame_ended = False
-        self.pe_ended = False
-        self.ec_initialized = False
-        self.ec_ended = False
-        self.pa_ended = False
-
-        # Useful variables initialization
-        self.quantum_sequence = None
-        self.symbols = None
-        self.photon_number = 0
 
         # Configuration initialization
         self.config_path = config_path
         self.config = None
+
+        self._reset()
 
         self._load_config()
 
@@ -260,8 +262,6 @@ class QOSSTAlice:
         Completly reset the state of the server.
         """
         logger.info("Resetting state of the server.")
-        self.client_connected = False
-        self.client_initialized = False
         self.frame_uuid = None
         self.frame_prepared = False
         self.frame_sent = False
@@ -271,9 +271,13 @@ class QOSSTAlice:
         self.ec_ended = False
         self.pa_ended = False
 
+        # Useful variables initialization
         self.quantum_sequence = None
         self.symbols = None
         self.photon_number = 0
+        self.reconciled_key = None
+        self.final_key = None
+        self.indices = []
 
     def _interruption_handler(self, _signum, _frame) -> None:
         """The interruption handler of the script.
@@ -369,18 +373,6 @@ class QOSSTAlice:
                 and self.client_initialized
                 and self.frame_uuid is not None
                 and self.pe_ended
-            )
-
-        if code in (
-            QOSSTCodes.EC_BLOCK,
-            QOSSTCodes.EC_REMAINING,
-            QOSSTCodes.EC_VERIFICATION,
-        ):
-            return (
-                self.client_connected
-                and self.client_initialized
-                and self.frame_uuid is not None
-                and self.ec_initialized
             )
 
         if code == QOSSTCodes.PA_REQUEST:
@@ -732,6 +724,7 @@ class QOSSTAlice:
                     continue
 
                 indices = np.array(data["indices"])
+                self.indices += data["indices"]
                 logger.debug("Indices: %s.", str(indices))
 
                 logger.info("Sending symbols.")
@@ -792,43 +785,64 @@ class QOSSTAlice:
                     continue
 
                 logger.info("Parameters estimation is approved.")
+                logger.info(
+                    "Removing symbols used for parameters estimation from raw key material"
+                )
+                mask = np.ones(
+                    len(self.symbols), dtype=bool
+                )  # Create an array of True, same length of quantum symbols
+                mask[np.array(self.indices)] = False  # Set False where to remove
+                self.raw_key_material = np.copy(self.symbols[mask])
+                logger.info("%i raw key symbols", len(self.raw_key_material))
+
                 self.pe_ended = True
                 self.socket.send(QOSSTCodes.PE_APPROVED)
 
-            if code in (
-                QOSSTCodes.EC_INITIALIZATION,
-                QOSSTCodes.EC_BLOCK,
-                QOSSTCodes.EC_REMAINING,
-                QOSSTCodes.EC_VERIFICATION,
-            ):
-                logger.error("Error correction is not implemented yet.")
-
-                self.socket.send(QOSSTCodes.UNEXPECTED_COMMAND)
+            if code == QOSSTCodes.EC_INITIALIZATION:
+                logger.info("Received EC initialization request")
+                # Symbols must be normalized in shot noise units
+                self.reconciled_key = reconcile_alice(
+                    self.socket,
+                    complex_to_real(
+                        self.raw_key_material
+                        * np.sqrt(
+                            self.photon_number / np.mean(np.abs(self.symbols) ** 2)
+                        )
+                    ),
+                    self.config.post_processing.reconciliation.dimension,
+                    data,
+                )
+                self.ec_ended = True
 
             if code == QOSSTCodes.PA_REQUEST:
-                logger.error("Privacy amplification is not implemented yet.")
-
-                self.socket.send(QOSSTCodes.UNEXPECTED_COMMAND)
+                logger.info("Received PA request.")
+                self.final_key = privacy_amplification_alice(
+                    self.socket,
+                    self.reconciled_key,
+                    self.config.post_processing.privacy_amplification.extractor,
+                    data,
+                )
+                self.pa_ended = True
 
             if code == QOSSTCodes.FRAME_ENDED:
                 logger.info("Frame %s ended.", str(self.frame_uuid))
                 self.socket.send(
                     QOSSTCodes.FRAME_ENDED_ACK, {"frame_uuid": str(self.frame_uuid)}
                 )
+                if self.final_key:
+                    if self.config.pushkey:
+                        logger.info("Pushing key to KMS")
+                        self.config.pushkey.interface(
+                            self.frame_uuid,
+                            self.final_key,
+                            **self.config.pushkey.kwargs,
+                        )
+                    else:
+                        logger.warning(
+                            "No pushkey interface is configured. Discarding key."
+                        )
                 logger.info("Resetting frame values")
-                self.client_initialized = False
-                self.frame_uuid = None
-                self.frame_prepared = False
-                self.frame_sent = False
-                self.frame_ended = False
-                self.pe_ended = False
-                self.ec_initialized = False
-                self.ec_ended = False
-                self.pa_ended = False
-
-                self.quantum_sequence = None
-                self.symbols = None
-                self.photon_number = 0
+                self._reset()
 
     def _do_dsp(self) -> bool:
         """
@@ -903,6 +917,12 @@ class QOSSTAlice:
         """
         assert self.config is not None
         assert self.config.alice is not None
+        if self.config.alice.override_photon_number:
+            logger.warning(
+                "Override photon number is not zero. Using this value (%f)",
+                self.config.alice.override_photon_number,
+            )
+            return self.config.alice.override_photon_number
         assert self.config.frame is not None
         assert self.quantum_sequence is not None
         self.dac.set_emission_parameters(
