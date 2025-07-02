@@ -49,13 +49,19 @@ from qosst_core.control_protocol.sockets import QOSSTServer
 from qosst_core.control_protocol.codes import QOSSTCodes, QOSSTErrorCodes
 from qosst_core.infos import get_script_infos
 
-from qosst_pp.reconciliation import reconcile_alice
+from qosst_pp.reconciliation.reconciliation import reconcile_alice
 from qosst_pp.privacy_amplification import privacy_amplification_alice
 
 from qosst_alice import __version__
 from qosst_alice.dsp import dsp_alice
 
 logger = logging.getLogger(__name__)
+
+try:
+    import zmq
+except ImportError:
+    logger.warning("zmq was not imported.")
+    zmq = None
 
 
 # pylint: disable=too-many-instance-attributes,too-many-return-statements,too-many-boolean-expressions,too-many-branches,too-many-statements
@@ -367,7 +373,7 @@ class QOSSTAlice:
                 and self.frame_ended
             )
 
-        if code == QOSSTCodes.EC_INITIALIZATION:
+        if code in (QOSSTCodes.EC_INITIALIZATION, QOSSTCodes.EC_INITIALIZATION_REMOTE):
             return (
                 self.client_connected
                 and self.client_initialized
@@ -814,6 +820,47 @@ class QOSSTAlice:
                 )
                 self.ec_ended = True
 
+            if code == QOSSTCodes.EC_INITIALIZATION_REMOTE:
+                assert self.config.post_processing.reconciliation.remote
+                logger.info("Using remote reconciliation.")
+                assert zmq is not None
+
+                logger.info("Creating ZMQ socket.")
+                zmq_context = zmq.Context()
+                zmq_socket = zmq_context.socket(zmq.REQ)
+
+                endpoint = self.config.post_processing.reconciliation.remote_endpoint
+                logger.info("Connecting ZMQ socket to %s", endpoint)
+                zmq_socket.connect(endpoint)
+
+                logger.info("Sending symbols")
+                zmq_socket.send_json(
+                    {
+                        "alice_symbols": list(
+                            complex_to_real(
+                                self.raw_key_material
+                                * np.sqrt(
+                                    self.photon_number
+                                    / np.mean(np.abs(self.symbols) ** 2)
+                                )
+                            )
+                        ),
+                        "mdr_dimension": self.config.post_processing.reconciliation.dimension,
+                    }
+                )
+
+                logger.info("Sending ACK to Bob.")
+                self.socket.send(QOSSTCodes.EC_INITIALIZATION_REMOTE_ACK)
+
+                logger.info("Wait for answer from the remote worker.")
+                data = zmq_socket.recv_json()
+
+                logger.info("Received key.")
+                self.reconciled_key = data["key"]
+
+                logger.info("Closing ZMQ socket.")
+                zmq_socket.close()
+                zmq_context.term()
             if code == QOSSTCodes.PA_REQUEST:
                 logger.info("Received PA request.")
                 self.final_key = privacy_amplification_alice(

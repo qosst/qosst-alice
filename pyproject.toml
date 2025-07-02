@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "qosst-alice"
-version = "0.10.0"
+version = "0.10.0.dev+post-processing1"
 description = "Alice submodule of QOSST, containing the server and DSP of Alice."
 authors = [
     "Yoann Piétri <Yoann.Pietri@lip6.fr>",
@@ -29,6 +29,7 @@ qosst-core = { git = "https://github.com/qosst/qosst-core", branch = "post-proce
 #qosst-hal = "^0.10.0"
 qosst-hal = { git = "https://github.com/qosst/qosst-hal", branch = "dev" }
 qosst-pp = { git = "https://github.com/qosst/qosst-pp", branch = "main" }
+zmq = {version = "^0.0.0", extras = ["remote-pp"]}
 
 
 [tool.poetry.scripts]
