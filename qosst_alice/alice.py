@@ -861,6 +861,8 @@ class QOSSTAlice:
                 logger.info("Closing ZMQ socket.")
                 zmq_socket.close()
                 zmq_context.term()
+
+                self.ec_ended = True
             if code == QOSSTCodes.PA_REQUEST:
                 logger.info("Received PA request.")
                 self.final_key = privacy_amplification_alice(

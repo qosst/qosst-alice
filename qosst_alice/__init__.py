@@ -17,4 +17,4 @@
 """
 QOSST package for Alice. It contains the DSP of Alice and the code for the server.
 """
-__version__ = "0.10.0.dev+post-processing1"
+__version__ = "0.10.0.dev+post-processing2"
