@@ -48,6 +48,7 @@ from qosst_core.control_protocol import QOSST_VERSION
 from qosst_core.control_protocol.sockets import QOSSTServer
 from qosst_core.control_protocol.codes import QOSSTCodes, QOSSTErrorCodes
 from qosst_core.infos import get_script_infos
+from qosst_core.random import RandomnessSource
 
 from qosst_alice import __version__
 from qosst_alice.dsp import dsp_alice
@@ -94,6 +95,8 @@ class QOSSTAlice:
     # Configuration
     config_path: str  #: The configuration path.
     config: Optional[Configuration]  #: The configuration object.
+
+    randomness: RandomnessSource  #: The randomness source.
 
     def __init__(self, config_path: str):
         """
@@ -238,6 +241,11 @@ class QOSSTAlice:
         logger.info("Schema is %s", str(emission_schema))
         emission_schema.check()
         logger.info("Detection emission accepted.")
+
+        # Assign randomness
+        self.randomness = self.config.alice.randomness.source(
+            **self.config.alice.randomness.kwargs
+        )
 
     def _init_socket(self) -> None:
         """

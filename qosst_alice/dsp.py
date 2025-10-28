@@ -32,6 +32,7 @@ from qosst_core.modulation.modulation import Modulation
 from qosst_core.comm.zc import zcsequence
 from qosst_core.comm.filters import root_raised_cosine_filter, rect_filter
 from qosst_core.configuration.exceptions import InvalidConfiguration
+from qosst_core.random import RandomnessSource, NumpyRandomnessSource
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +81,7 @@ def dsp_alice(config: Configuration) -> Tuple[np.ndarray, np.ndarray, np.ndarray
         load_symbols=config.alice.signal_generation.load_symbols,
         save_symbols=config.alice.signal_generation.save_symbols,
         symbols_path=config.alice.signal_generation.symbols_path,
+        randomness=config.alice.randomness.source(**config.alice.randomness.kwargs),
     )
 
 
@@ -109,6 +111,7 @@ def dsp_alice_params(
     load_symbols: bool = False,
     save_symbols: bool = False,
     symbols_path: QOSSTPath = "",
+    randomness: RandomnessSource = NumpyRandomnessSource(),
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Use the DSP of Alice to generate the sequence to the DAC using parameters.
 
@@ -137,6 +140,7 @@ def dsp_alice_params(
         load_symbols (bool, optional): load the symbols instead of generating them if True. Defaults to False.
         save_symbols (bool, optional): save the symbols if True. Defaults to False.
         symbols_path (QOSSTPath, optional): path to load or save the quantum symbols. Defaults to "".
+        randomness (RandomnessSource, optional): source of the randomness. Defaults to NumpyRandomnessSource().
 
     Returns:
         Tuple[np.ndarray, np.ndarray, np.ndarray]: sequence to send, quantum sequence (without pilots, Zadoff-Chu and padded zeros), symbols.
@@ -170,6 +174,7 @@ def dsp_alice_params(
         load_symbols_path=symbols_path,
         save_symbols=save_symbols,
         save_symbols_path=symbols_path,
+        randomness=randomness,
     )
     symbols = np.copy(sequence)
 
@@ -255,6 +260,7 @@ def generate_baseband_sequence(
     load_symbols_path: QOSSTPath = "",
     save_symbols: bool = False,
     save_symbols_path: QOSSTPath = "",
+    randomness: RandomnessSource = NumpyRandomnessSource(),
 ) -> np.ndarray:
     """
     Generate symbols for modulation, variance, modulation size and number of symbols.
@@ -283,7 +289,9 @@ def generate_baseband_sequence(
         variance,
         modulation_size,
     )
-    modulation = modulation_cls(variance=variance, modulation_size=modulation_size)
+    modulation = modulation_cls(
+        variance=variance, modulation_size=modulation_size, randomness=randomness
+    )
     symbols: np.ndarray = modulation.modulate(size=num_symbols)
 
     if save_symbols:

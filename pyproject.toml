@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "qosst-alice"
-version = "0.10.0"
+version = "0.10.0+randomness-0.1"
 description = "Alice submodule of QOSST, containing the server and DSP of Alice."
 authors = [
     "Yoann Piétri <Yoann.Pietri@lip6.fr>",
@@ -25,7 +25,7 @@ classifiers = [
 [tool.poetry.dependencies]
 python = ">=3.9,<3.14"
 #qosst-core = "^0.10.0"
-qosst-core = { git = "https://github.com/qosst/qosst-core", branch = "dev" }
+qosst-core = { git = "https://github.com/qosst/qosst-core", branch = "randomness" }
 #qosst-hal = "^0.10.0"
 qosst-hal = { git = "https://github.com/qosst/qosst-hal", branch = "dev" }
 
