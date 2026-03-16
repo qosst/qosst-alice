@@ -1,64 +1,61 @@
-[tool.poetry]
+[project]
 name = "qosst-alice"
-version = "0.10.0"
 description = "Alice submodule of QOSST, containing the server and DSP of Alice."
 authors = [
-    "Yoann Piétri <Yoann.Pietri@lip6.fr>",
-    "Matteo Schiavon <Matteo.Schiavon@lip6.fr>",
+    { name = "Yoann Piétri", email = "Yoann.Pietri@lip6.fr" },
+    { name = "Matteo Schiavon", email = "Matteo.Schiavon@lip6.fr" },
 ]
-packages = [{ include = "qosst_alice" }, { include = "qosst_alice/py.typed" }]
-license = "GPLv3"
+license = "GPL-3.0-only"
 readme = "README.md"
-homepage = "https://github.com/qosst"
-repository = "https://github.com/qosst/qosst-alice"
-documentation = "https://qosst-alice.readthedocs.io/"
+
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Natural Language :: English",
     "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering :: Physics",
     "Topic :: Security :: Cryptography",
 ]
+requires-python = ">=3.10, <3.15"
 
-[tool.poetry.dependencies]
-python = ">=3.9,<3.14"
-#qosst-core = "^0.10.0"
-qosst-core = { git = "https://github.com/qosst/qosst-core", branch = "dev" }
-#qosst-hal = "^0.10.0"
-qosst-hal = { git = "https://github.com/qosst/qosst-hal", branch = "dev" }
+dynamic = ["version"]
+
+dependencies = [
+    "qosst-hal @ git+https://github.com/qosst/qosst-hal@dev",
+    "qosst-core @ git+https://github.com/qosst/qosst-core@dev",
+]
+
+[project.urls]
+homepage = "https://github.com/qosst"
+repository = "https://github.com/qosst/qosst-alice"
+documentation = "https://qosst-alice.readthedocs.io/"
 
 
-[tool.poetry.scripts]
+[project.scripts]
 qosst-alice = "qosst_alice.alice:main"
 qosst-alice-tools = "qosst_alice.tools.commands:main"
 
+
+[tool.poetry]
+version = "0.10.0.dev0"
+packages = [{ include = "qosst_alice" }, { include = "qosst_alice/py.typed" }]
+
 [tool.poetry.group.dev.dependencies]
-sphinx-rtd-theme = [
-    { version = "^1.0.0", python = ">=3.9, <3.10" },
-    { version = "^3.0.0", python = ">=3.10, <3.14" },
-]
-Sphinx = [
-    { version = "^5.0.0", python = ">=3.9, <3.10" },
-    { version = "^8.1.0", python = ">=3.10, <3.14" },
-]
+Sphinx = "^8.1.0"
+sphinx-rtd-theme = "^3.0.0"
 docstr-coverage = "^2.2.0"
-setuptools = "^67.6.1"
+setuptools = "^82.0.1"
 sphinx-argparse-cli = "^1.11.0"
 sphinx-prompt = "^1.5.0"
-myst-parser = [
-    { version = "^1.0.0", python = ">=3.9, <3.10" },
-    { version = "^4.0.0", python = ">=3.10, <3.14" },
-]
+myst-parser = [{ version = "^4.0.0", python = ">=3.10, <3.15" }]
 sphinxcontrib-programoutput = "^0.17"
 matplotlib = "^3.5.1"
 scipy = [
-    { version = "^1.13.0", python = ">=3.9, <3.10" },
-    { version = "^1.15.0", python = ">=3.10, <3.14" },
+    { version = ">=1.13.0, <1.17.0", python = ">=3.10, <3.11" },
+    { version = ">=1.17.0, <2.0 ", python = ">=3.11, <3.15" },
 ]
-pylint = "^3.3.0"
-black = "^23.9.1"
+pylint = "^4.0.5"
+black = "^26.3.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
