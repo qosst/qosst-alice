@@ -1164,7 +1164,7 @@ wheels = [
 
 [[package]]
 name = "qosst-alice"
-version = "0.10.0.dev1"
+version = "0.10.0.dev2"
 source = { editable = "." }
 dependencies = [
     { name = "qosst-core" },
@@ -1213,8 +1213,8 @@ dev = [
 
 [[package]]
 name = "qosst-core"
-version = "0.10.4.dev4"
-source = { git = "https://github.com/qosst/qosst-core?rev=dev#41414a780f2c3b4efba93ddf58dd747b914e951a" }
+version = "0.10.4.dev16"
+source = { git = "https://github.com/qosst/qosst-core?rev=dev#6c18a5099c9ace7591d2b34de7cb6cf2d8279d4d" }
 dependencies = [
     { name = "falcon-digital-signature" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },

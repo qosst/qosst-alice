@@ -17,7 +17,7 @@ classifiers = [
     "Topic :: Security :: Cryptography",
 ]
 requires-python = ">=3.11, <3.15"
-version = "0.10.0.dev1"
+version = "0.10.0.dev2"
 
 dependencies = [
     "qosst-hal @ git+https://github.com/qosst/qosst-hal@dev",

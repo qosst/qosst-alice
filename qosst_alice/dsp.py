@@ -32,7 +32,7 @@ from qosst_core.configuration import Configuration
 from qosst_core.modulation.modulation import Modulation
 from qosst_core.comm.filters import root_raised_cosine_filter, rect_filter
 from qosst_core.configuration.exceptions import InvalidConfiguration
-from qosst_core.synchronization.synchronization import SynchronizationSequence
+from qosst_core.synchronization.synchronization import BaseSynchronizationSequence
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +102,7 @@ def dsp_alice_params(
     zc_root: int,
     mls_nbits: int,
     synchronization_rate: float,
-    synchronization_cls: Type[SynchronizationSequence],
+    synchronization_cls: Type[BaseSynchronizationSequence],
     num_zeros_start: int,
     num_zeros_end: int,
     dac_rate: float,
@@ -442,7 +442,7 @@ def add_frequency_multiplexed_pilots(
 
 def add_synchronization_sequence(
     sequence: np.ndarray,
-    synchronization_cls: Type[SynchronizationSequence],
+    synchronization_cls: Type[BaseSynchronizationSequence],
     zc_root: int,
     zc_length: int,
     mls_nbits: int,
