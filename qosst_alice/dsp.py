@@ -1,5 +1,5 @@
 # qosst-alice - Alice module of the Quantum Open Software for Secure Transmissions.
-# Copyright (C) 2021-2024 Yoann Piétri
+# Copyright (C) 2021-2026 Yoann Piétri
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@ This module holds two different things :
 * First the dsp function, that takes a configuration object as a parameter, and render directly the signals to be sent to the modulator
 * And other functions that will be called by the dsp function and that will take individual (i.e. not configuration object) parameters.
 """
+
 import logging
 from typing import Tuple, Type
 
@@ -29,9 +30,9 @@ from scipy import signal
 from qosst_core.utils import QOSSTPath
 from qosst_core.configuration import Configuration
 from qosst_core.modulation.modulation import Modulation
-from qosst_core.comm.zc import zcsequence
 from qosst_core.comm.filters import root_raised_cosine_filter, rect_filter
 from qosst_core.configuration.exceptions import InvalidConfiguration
+from qosst_core.synchronization.synchronization import SynchronizationSequence
 
 logger = logging.getLogger(__name__)
 
@@ -65,10 +66,12 @@ def dsp_alice(config: Configuration) -> Tuple[np.ndarray, np.ndarray, np.ndarray
         frequency_shift=config.frame.quantum.frequency_shift,
         pilots_amplitudes=config.frame.pilots.amplitudes,
         pilots_frequencies=config.frame.pilots.frequencies,
-        zc_length=config.frame.zadoff_chu.length,
-        zc_root=config.frame.zadoff_chu.root,
-        zc_rate=config.frame.zadoff_chu.rate,
-        zc_amplitude=config.frame.zadoff_chu.amplitude,
+        zc_length=config.frame.synchronization.zc_length,
+        zc_root=config.frame.synchronization.zc_root,
+        mls_nbits=config.frame.synchronization.mls_nbits,
+        synchronization_rate=config.frame.synchronization.rate,
+        synchronization_amplitude=config.frame.synchronization.amplitude,
+        synchronization_cls=config.frame.synchronization.synchronization_cls,
         num_zeros_start=config.frame.num_zeros_start,
         num_zeros_end=config.frame.num_zeros_end,
         dac_rate=config.alice.dac.rate,
@@ -84,7 +87,7 @@ def dsp_alice(config: Configuration) -> Tuple[np.ndarray, np.ndarray, np.ndarray
     )
 
 
-# pylint: disable=too-many-arguments, too-many-locals, too-many-branches, too-many-statements
+# pylint: disable=too-many-arguments, too-many-locals, too-many-branches, too-many-statements, too-many-positional-arguments
 def dsp_alice_params(
     modulation_cls: Type[Modulation],
     variance: float,
@@ -97,7 +100,9 @@ def dsp_alice_params(
     pilots_frequencies: np.ndarray,
     zc_length: int,
     zc_root: int,
-    zc_rate: float,
+    mls_nbits: int,
+    synchronization_rate: float,
+    synchronization_cls: Type[SynchronizationSequence],
     num_zeros_start: int,
     num_zeros_end: int,
     dac_rate: float,
@@ -110,7 +115,7 @@ def dsp_alice_params(
     load_symbols: bool = False,
     save_symbols: bool = False,
     symbols_path: QOSSTPath = "",
-    zc_amplitude: float = 1,
+    synchronization_amplitude: float = 1,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Use the DSP of Alice to generate the sequence to the DAC using parameters.
 
@@ -126,7 +131,8 @@ def dsp_alice_params(
         pilots_frequencies (np.ndarray): list of the frequencies of the pilots.
         zc_length (int): length of the Zadoff-Chu sequence. Must be coprime with the root.
         zc_root (int): root of the Zadoff-Chu sequence. Must be coprime with the length.
-        zc_rate (float): rate of the Zadoff-Chu sequence. Must be less than the DAC rate. If 0 is given, the DAC rate is used.
+        mls_nbits (int): number of bits for the MLS sequence.
+        synchronization_rate (float): rate of the synchronization sequence. Must be less than the DAC rate. If 0 is given, the DAC rate is used.
         num_zeros_start (int): number of zeros to pad before the Zadoff-Chu sequence.
         num_zeros_end (int): number of zeros to pad after the end of the quantum sequence.
         dac_rate (float): dac rate.
@@ -139,7 +145,7 @@ def dsp_alice_params(
         load_symbols (bool, optional): load the symbols instead of generating them if True. Defaults to False.
         save_symbols (bool, optional): save the symbols if True. Defaults to False.
         symbols_path (QOSSTPath, optional): path to load or save the quantum symbols. Defaults to "".
-        zc_amplitude (float, optional): amplitude of the Zadoff-Chu sequence. Must be between 0 and 1. Defaults to 1,
+        synchronization_amplitude (float, optional): amplitude of the synchronization sequence. Must be between 0 and 1. Defaults to 1,
 
     Returns:
         Tuple[np.ndarray, np.ndarray, np.ndarray]: sequence to send, quantum sequence (without pilots, Zadoff-Chu and padded zeros), symbols.
@@ -223,17 +229,19 @@ def dsp_alice_params(
 
     # Normalize sequence
 
-    # Add Zadoff-Chu sequence
-    if zc_rate == 0:
+    # Add synchronization sequence
+    if synchronization_rate == 0:
         repeat = 1
     else:
-        repeat = int(dac_rate / zc_rate)
-    sequence = add_zc(
+        repeat = int(dac_rate / synchronization_rate)
+    sequence = add_synchronization_sequence(
         sequence,
+        synchronization_cls,
         zc_root,
         zc_length,
+        mls_nbits,
         repeat=repeat,
-        amplitude=zc_amplitude,
+        amplitude=synchronization_amplitude,
     )
 
     # Pad zeros
@@ -249,7 +257,7 @@ def dsp_alice_params(
     return sequence, quantum_sequence, symbols
 
 
-# pylint: disable=too-many-arguments
+# pylint: disable=too-many-arguments, too-many-positional-arguments
 def generate_baseband_sequence(
     modulation_cls: Type[Modulation],
     variance: float,
@@ -432,26 +440,48 @@ def add_frequency_multiplexed_pilots(
     return sequence + pilot_sequence
 
 
-def add_zc(sequence: np.ndarray, root: int, length: int, repeat: int = 1, amplitude: float = 1) -> np.ndarray:
+def add_synchronization_sequence(
+    sequence: np.ndarray,
+    synchronization_cls: Type[SynchronizationSequence],
+    zc_root: int,
+    zc_length: int,
+    mls_nbits: int,
+    repeat: int = 1,
+    amplitude: float = 1,
+) -> np.ndarray:
     """
-    Add Zadoff-Chu sequence at the beginning of the sequence.
+    Add synchronization sequence at the beginning of the sequence.
 
     Args:
-        sequence (np.ndarray): sequence to which add the Zadoff-Chu sequence to.
-        root (int): root of the Zadoff-Chu sequence.
-        length (int): length of the Zadoff-Chu sequence.
+        sequence (np.ndarray): sequence to which add the synchronization sequence to.
+        zc_root (int): root of the Zadoff-Chu sequence.
+        zc_length (int): length of the Zadoff-Chu sequence.
+        mls_nbits (int): number of bits for the maximum length sequence.
         repeat (int, optional): repeat each element by this amount, useful to change the rate. Defaults to 1.
-        amplitude (float, optional): amplitude of the Zadoff-Chu sequence. Defaults to 1.
+        amplitude (float, optional): amplitude of the synchronization sequence. Defaults to 1.
 
     Returns:
-        np.ndarray: sequence with the Zadoff-Chu sequence added.
+        np.ndarray: sequence with the synchronization sequence added.
     """
-    logger.info("Adding Zadoff-Chu with length %i, root %i and amplitude %f", length, root, amplitude)
-    zadoff_chu = amplitude * zcsequence(root, length)
+    logger.info(
+        "Adding synchronization sequence %s with length %i, root %i, mls nbits %i amplitude %f",
+        str(synchronization_cls),
+        zc_length,
+        zc_root,
+        mls_nbits,
+        amplitude,
+    )
+
+    synchronization_sequence = (
+        amplitude
+        * synchronization_cls(
+            root=zc_root, length=zc_length, nbits=mls_nbits
+        ).sequence()
+    )
     if repeat > 1:
-        logger.info("Repeating Zadoff-Chu with repeat=%i", repeat)
-        zadoff_chu = np.repeat(zadoff_chu, repeat)
-    return np.concatenate((zadoff_chu, sequence))
+        logger.info("Repeating synchronization sequence with repeat=%i", repeat)
+        synchronization_sequence = np.repeat(synchronization_sequence, repeat)
+    return np.concatenate((synchronization_sequence, sequence))
 
 
 def add_zeros(

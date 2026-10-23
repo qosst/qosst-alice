@@ -9,7 +9,7 @@ from qosst_alice.dsp import (
     apply_rrc_filter,
     shift_sequence,
     add_frequency_multiplexed_pilots,
-    add_zc,
+    add_synchronization_sequence,
 )
 
 data = generate_baseband_sequence(
@@ -54,7 +54,7 @@ data = add_frequency_multiplexed_pilots(
 zc_root = 5
 zc_length = 3989
 
-data = add_zc(sequence=data, root=zc_root, length=zc_length)
+data = add_synchronization_sequence(sequence=data, root=zc_root, length=zc_length)
 
 
 fig, (ax, ax2) = plt.subplots(2, 1)

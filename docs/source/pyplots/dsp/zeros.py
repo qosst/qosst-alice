@@ -9,7 +9,7 @@ from qosst_alice.dsp import (
     apply_rrc_filter,
     shift_sequence,
     add_frequency_multiplexed_pilots,
-    add_zc,
+    add_synchronization_sequence,
     add_zeros,
 )
 
@@ -55,7 +55,7 @@ data = add_frequency_multiplexed_pilots(
 zc_root = 5
 zc_length = 3989
 
-data = add_zc(sequence=data, root=zc_root, length=zc_length)
+data = add_synchronization_sequence(sequence=data, root=zc_root, length=zc_length)
 
 data = add_zeros(sequence=data, num_zeros_start=int(zc_length / 2), num_zeros_end=0)
 

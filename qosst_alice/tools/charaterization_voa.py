@@ -15,10 +15,11 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-Tool for the calibration of a VOA, 
-including attenuation relation, 
+Tool for the calibration of a VOA,
+including attenuation relation,
 hysteresis, stability and modulation.
 """
+
 import logging
 import time
 import datetime
@@ -32,7 +33,6 @@ from qosst_hal.adc import GenericADC
 from qosst_hal.dacadc import GenericDACADC
 from qosst_core.utils import get_object_by_import_path, configuration_menu
 from qosst_core.data import BaseQOSSTData
-
 
 DEFAULT_VOA = "qosst_hal.voa.FakeVOA"
 DEFAULT_VOA_LOCATION = ""
@@ -71,7 +71,7 @@ class CharacterizationVOAData(BaseQOSSTData):
     on_off_data: np.ndarray
     date: datetime.datetime
 
-    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     def __init__(
         self,
         max_power: float,
