@@ -147,8 +147,8 @@ class QOSSTAlice:
             channels=self.config.alice.dac.channels,
             dac_rate=self.config.alice.dac.rate,
             amplitude=self.config.alice.dac.amplitude,
-            repeat=1,
-            **self.config.alice.dac.extra_args,
+            # extra_args can override repeat (0: continuous emission)
+            **{"repeat": 1, **self.config.alice.dac.extra_args},
         )
         logger.info(
             "Opening power at location %s", self.config.alice.powermeter.location
@@ -938,8 +938,8 @@ class QOSSTAlice:
             channels=self.config.alice.dac.channels,
             dac_rate=self.config.alice.dac.rate,
             amplitude=self.config.alice.dac.amplitude,
-            repeat=1,
-            **self.config.alice.dac.extra_args,
+            # extra_args can override repeat (0: continuous emission)
+            **{"repeat": 1, **self.config.alice.dac.extra_args},
         )
 
         mean_photon_number = (power_light - power_no_light) / (
@@ -990,8 +990,8 @@ class QOSSTAlice:
             channels=self.config.alice.dac.channels,
             dac_rate=self.config.alice.dac.rate,
             amplitude=self.config.alice.dac.amplitude,
-            repeat=1,
-            **self.config.alice.dac.extra_args,
+            # extra_args can override repeat (0: continuous emission)
+            **{"repeat": 1, **self.config.alice.dac.extra_args},
         )
 
     def start(self):
